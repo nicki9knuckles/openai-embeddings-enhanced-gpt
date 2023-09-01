@@ -36,9 +36,17 @@ def num_tokens_from_messages(messages, model: str) -> int:
 
 
 def get_messages(context, question: str):
-    context_str = "\n\n".join([f"Body:\n{x}" for x in context])
-    print(f"context_str------------: {context_str}")
-    print("---------------------")
+    context_list = []
+
+    for x in context:
+        body_str = f"Movie:{x}\n"
+
+        context_list.append(body_str)
+
+    context_str = "\n\n".join(context_list)
+
+    # print(f"context_str------------: {context_str}")
+    # print("---------------------")
     return [
         {
             "role": "system",

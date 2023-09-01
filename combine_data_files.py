@@ -44,14 +44,13 @@ combined_data = pd.concat([csv_data_filtered, pickle_data_filtered], ignore_inde
 
 combined_data.to_pickle("combined_data.pkl")
 
-df = pd.read_pickle("combined_data.pkl")
-
 # Apply a function to scale down ratings to a max of 10 if they are greater than 10
-df["tomatometer_rating"] = df["tomatometer_rating"].apply(
+combined_data["tomatometer_rating"] = combined_data["tomatometer_rating"].apply(
     lambda x: x / 10 if x > 10 else x
 )
 
-# Save the updated DataFrame back to a Pickle file
-df.to_pickle("combined_data_updated.pkl")
+filtered_combined_data = combined_data[df["tomatometer_rating"] > 5]
+# Save the filtered DataFrame, if needed
+filtered_combined_data.to_pickle("filtered_combined_data.pkl")
 
-print(df.head().T)
+print(filtered_combined_data.head().T)

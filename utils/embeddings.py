@@ -18,7 +18,7 @@ def embedding_from_string(
         embedding_cache[(string, model)] = get_embedding(string, model)
         print(f"GOT EMBEDDING FROM OPENAI FOR {string[:20]}")
 
-        # Create a temporary file and write the updated cache to it
+        # # Create a temporary file and write the updated cache to it
         temp_file_path = embedding_cache_path + ".tmp"
         with open(temp_file_path, "wb") as temp_embedding_cache_file:
             pickle.dump(embedding_cache, temp_embedding_cache_file)
@@ -26,7 +26,7 @@ def embedding_from_string(
         # If writing was successful, replace the old cache with the new one
         os.rename(temp_file_path, embedding_cache_path)
     # else:
-    # print(f"USING CACHED EMBEDDING FOR {string[:20]}")
+    #     print(f"USING CACHED EMBEDDING FOR {string[:20]}")
 
     try:
         return embedding_cache[(string, model)]

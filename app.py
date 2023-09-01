@@ -4,12 +4,7 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 
-# import logging
-# import tempfile
-
-
 from utils.cache import load_embedding_cache
-from utils.data import simplify_data
 from utils.embeddings import (
     embedding_from_string,
     ask_embedding_store,
@@ -27,39 +22,49 @@ enc = tiktoken.encoding_for_model(chat_model)
 
 def main():
     embedding_cache = load_embedding_cache(embedding_cache_path)
-    movie_data = simplify_data("rotten_tomatoes_movies.csv")
-    # Print the first 5 rows to check
-    # print(df.head().T)
-    # unique_values = df["audience_status"].unique()
-    # print(f"Unique values in 'audience_status': {unique_values}")
-
-    num_rows = movie_data.shape[0]
-    # print(f"The CSV file has {num_rows} rows.")
-    # print(f"embedding_cache {embedding_cache}")
-
-    movie_plots = (
-        # drop any rows where "movie_info" is NaN before converting the remaining values to strings.
-        movie_data.dropna(subset=["movie_info"])["movie_info"]
-        .astype(str)
-        .values
-    )
+    movie_data = pd.read_pickle("final_movie_data.pkl")
 
     plot_embedding = {}
-    for plot in movie_plots:
-        plot_embedding[plot] = embedding_from_string(
-            embedding_cache_path, plot, embedding_cache, model="text-embedding-ada-002"
+
+    for index, row in movie_data.iterrows():
+        plot = row["movie_info"]
+        movie_title = row["movie_title"]
+        tomatometer_rating = row["tomatometer_rating"]
+        original_release_date = row["original_release_date"]
+        if (
+            plot == ""
+            or plot is None
+            or (isinstance(plot, float) and math.isnan(plot))
+            or pd.isna(movie_title)
+            or pd.isna(tomatometer_rating)
+            or pd.isna(original_release_date)
+        ):
+            # print("Skipping movie due to missing properties.")
+            continue
+
+        combined_string = f"title: {movie_title}, rating: {tomatometer_rating}, release: {original_release_date}, plot: {plot}"
+
+        # print(f"combined_string: {combined_string}")
+        plot_embedding[combined_string] = embedding_from_string(
+            embedding_cache_path,
+            combined_string,
+            embedding_cache,
+            model="text-embedding-ada-002",
         )
 
-    # first_key, first_value = list(plot_embedding.items())[0]
-    # print("First plot:", first_key)
-    # print("First embedding:", first_value)
+    # first_key = next(iter(embedding_cache))
+    # first_value = embedding_cache[first_key]
+
+    # print(f"First key: {first_key}")
+    # print(f"First value: {first_value}")
+
     ask_embedding_store(
         MAX_PROMPT_SIZE,
         chat_model,
         enc,
-        "Do you know about any movies that have to do with heartbreak? If so can you tell me the plot?",
+        "Can you suggest 2 or 3 highly rated horror movies from 2023, and tell me a bit about their plots?",
         plot_embedding,
-        15,
+        5,
     )
 
 
