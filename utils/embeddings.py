@@ -83,7 +83,7 @@ def get_n_nearest_neighbors(query_embedding, embeddings, n: int):
 
 
 def ask_embedding_store(
-    MAX_PROMPT_SIZE, chat_model, enc, question: str, embeddings, max_documents: int
+    MAX_PROMPT_SIZE, chat_model, enc, chat_history, embeddings, max_documents: int
 ) -> str:
     """
     Fetch necessary context from our embedding store, striving to fit the top max_documents
@@ -94,6 +94,11 @@ def ask_embedding_store(
     :param max_documents: The maximum number of documents to use as context
     :return: GPT's response to the question given context provided in our embedding store
     """
+    # Loop through messages in reverse to find the most recent user message
+    for message in reversed(chat_history):
+        if message["role"] == "user":
+            question = message["content"]
+            break
     query_embedding = get_embedding(question)
 
     nearest_neighbors = get_n_nearest_neighbors(
@@ -101,7 +106,9 @@ def ask_embedding_store(
     )
     messages: Optional[List[Dict[str, str]]] = None
 
-    base_token_count = num_tokens_from_messages(get_messages([], question), chat_model)
+    base_token_count = num_tokens_from_messages(
+        get_messages([], question, []), chat_model
+    )
 
     token_counts = [
         len(enc.encode(document.replace("\n", " ")))
@@ -117,10 +124,11 @@ def ask_embedding_store(
 
     context = [x[0] for x in nearest_neighbors[: most_messages_we_can_fit + 1]]
 
-    messages = get_messages(context, question)
+    messages = get_messages(context, question, chat_history)
 
     #     print(f"Prompt: {messages[-1]['content']}")
     result = openai.ChatCompletion.create(model=chat_model, messages=messages)
 
-    print(f"Result----------------------: {result.choices[0].message['content']}")
-    return result.choices[0].message["content"]
+    # print(f"Result----------------------: {result.choices[0].message['content']}")
+    # return result.choices[0].message["content"]
+    return result

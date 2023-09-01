@@ -35,7 +35,7 @@ def num_tokens_from_messages(messages, model: str) -> int:
     return num_tokens
 
 
-def get_messages(context, question: str):
+def get_messages(context, question: str, chat_history):
     context_list = []
 
     for x in context:
@@ -47,19 +47,19 @@ def get_messages(context, question: str):
 
     # print(f"context_str------------: {context_str}")
     # print("---------------------")
-    return [
+    new_array = [
         {
             "role": "system",
             "content": """
     You will receive a question from the user and some context to help you answer the question.
 
-    Evaluate the context and provide an answer if you can confidently answer the question.
+    Evaluate the context and  to determine if the question is related to the context. If so, use context to provide an answer if you can. If the context doesn't have the data needed to give a sensible response, provide a response that indicates that you don't have the data.
 
-    If you are unable to provide a confident response, kindly state that it is the case and explain the reason.
-
-    Prioritize offering an "I don't know" response over conveying potentially false information.
+    If the question isn't related to the context, provide an answer based on the question alone.
 
     The user will only see your response and not the context you've been provided. Thus, respond in precise detail, directly repeating the information that you're referencing from the context.
+    
+    This is an ongoing conversation with the user, so you can use information from previous turns in the conversation to inform your response.
     """.strip(),
         },
         {
@@ -69,7 +69,12 @@ def get_messages(context, question: str):
 
     {context_str}
 
-    Please answer the following question: {question}
+    Please respond to this statement or question from the user: {question}
     """.strip(),
         },
     ]
+
+    # Insert 'messages' before the last item of 'new_array'
+    new_array = new_array[:-1] + chat_history + new_array[-1:]
+
+    return new_array

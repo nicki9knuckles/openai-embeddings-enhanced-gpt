@@ -2,70 +2,79 @@ import openai
 import tiktoken
 import os
 from dotenv import load_dotenv
-import pandas as pd
+import argparse
 
-from utils.cache import load_embedding_cache
-from utils.embeddings import (
-    embedding_from_string,
-    ask_embedding_store,
-)
+
+from utils.embeddings import ask_embedding_store
+from utils.get_movie_embeddings import get_movie_embeddings
 
 
 MAX_CONTEXT_WINDOW = 4097
 MINIMUM_RESPONSE_SPACE = 1000
 MAX_PROMPT_SIZE = MAX_CONTEXT_WINDOW - MINIMUM_RESPONSE_SPACE
-embedding_cache_path = "movie_embeddings.pkl"
 chat_model = "gpt-3.5-turbo"
 embedding_enc = tiktoken.encoding_for_model("text-embedding-ada-002")
 enc = tiktoken.encoding_for_model(chat_model)
 
 
+def bold(text):
+    bold_start = "\033[1m"
+    bold_end = "\033[0m"
+    return bold_start + text + bold_end
+
+
+def blue(text):
+    blue_start = "\033[34m"
+    blue_end = "\033[0m"
+    return blue_start + text + blue_end
+
+
+def red(text):
+    red_start = "\033[31m"
+    red_end = "\033[0m"
+    return red_start + text + red_end
+
+
 def main():
-    embedding_cache = load_embedding_cache(embedding_cache_path)
-    movie_data = pd.read_pickle("final_movie_data.pkl")
-
-    plot_embedding = {}
-
-    for index, row in movie_data.iterrows():
-        plot = row["movie_info"]
-        movie_title = row["movie_title"]
-        tomatometer_rating = row["tomatometer_rating"]
-        original_release_date = row["original_release_date"]
-        if (
-            plot == ""
-            or plot is None
-            or (isinstance(plot, float) and math.isnan(plot))
-            or pd.isna(movie_title)
-            or pd.isna(tomatometer_rating)
-            or pd.isna(original_release_date)
-        ):
-            # print("Skipping movie due to missing properties.")
-            continue
-
-        combined_string = f"title: {movie_title}, rating: {tomatometer_rating}, release: {original_release_date}, plot: {plot}"
-
-        # print(f"combined_string: {combined_string}")
-        plot_embedding[combined_string] = embedding_from_string(
-            embedding_cache_path,
-            combined_string,
-            embedding_cache,
-            model="text-embedding-ada-002",
-        )
-
-    # first_key = next(iter(embedding_cache))
-    # first_value = embedding_cache[first_key]
-
-    # print(f"First key: {first_key}")
-    # print(f"First value: {first_value}")
-
-    ask_embedding_store(
-        MAX_PROMPT_SIZE,
-        chat_model,
-        enc,
-        "Can you suggest 2 or 3 highly rated horror movies from 2023, and tell me a bit about their plots?",
-        plot_embedding,
-        5,
+    movie_embeddings = get_movie_embeddings()
+    parser = argparse.ArgumentParser(description="Simple command line chatbot")
+    parser.add_argument(
+        "--personality",
+        type=str,
+        help="A brief summary of the chatbot's personality",
+        default="Friendly and helpful",
     )
+    args = parser.parse_args()
+
+    initial_prompt = (
+        f"You are a movie recommendation chatbot. Your personality is: {args}"
+    )
+    messages = [
+        {
+            "role": "system",
+            "content": initial_prompt,
+        }
+    ]
+
+    while True:
+        try:
+            user_input = input(bold(blue("You: ")))
+            messages.append({"role": "user", "content": user_input})
+
+            res = ask_embedding_store(
+                MAX_PROMPT_SIZE,
+                chat_model,
+                enc,
+                messages,
+                movie_embeddings,
+                10,
+            )
+
+            messages.append(res["choices"][0]["message"].to_dict())
+            print(bold(red("Assistant: ")), res["choices"][0]["message"]["content"])
+        except KeyboardInterrupt:
+            print("Exiting...")
+            break
 
 
 if __name__ == "__main__":
